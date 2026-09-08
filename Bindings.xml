@@ -1,0 +1,7 @@
+<Bindings>
+
+    <!-- XyTracker快捷键绑定 -->
+    <Binding name="显示许愿窗口" header="XYTRACKER">
+        XyTracker_Toggle()
+    </Binding>
+</Bindings>

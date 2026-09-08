@@ -1,0 +1,382 @@
+<Ui xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/"
+    xmlns="http://www.blizzard.com/wow/ui/">
+    
+    <!-- 黑名单配置界面框架 -->
+    <Frame name="XyTrackerBlacklistConfigFrame" parent="UIParent" movable="true" enableMouse="true" hidden="true">
+        <Size>
+            <AbsDimension x="400" y="280"/>
+        </Size>
+        <Anchors>
+            <Anchor point="CENTER"/>
+        </Anchors>
+        <Layers>
+            <Layer level="BACKGROUND">
+                <Texture file="Interface\DialogFrame\UI-DialogBox-Background">
+                    <Size>
+                        <AbsDimension x="1" y="1"/>
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT"/>
+                        <Anchor point="BOTTOMRIGHT"/>
+                    </Anchors>
+                    <Color r="0" g="0" b="0" a="0.8"/>
+                </Texture>
+            </Layer>
+            <Layer level="ARTWORK">
+                <!-- 标题 -->
+                <FontString name="$parentTitle" inherits="GameFontNormal" text="XyTracker 黑名单配置">
+                    <Anchors>
+                        <Anchor point="TOP">
+                            <Offset>
+                                <AbsDimension x="0" y="-15"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+        <Frames>
+            <!-- 启用/禁用复选框 -->
+            <CheckButton name="$parentEnableCheckbox" inherits="OptionsCheckButtonTemplate">
+                <Size>
+                    <AbsDimension x="26" y="26"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="20" y="-50"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        getglobal(this:GetName() .. "Text"):SetText("启用黑名单功能")
+                        this:SetChecked(XYT_Blacklist.enabled)
+                    </OnLoad>
+                    <OnClick>
+                        XYT_Blacklist_SetEnabled(this:GetChecked())
+                    </OnClick>
+                </Scripts>
+            </CheckButton>
+            
+            <!-- 黑名单播报文字输入框 -->
+            <EditBox name="$parentAnnouncementText" inherits="InputBoxTemplate" autoFocus="false">
+                <Size>
+                    <AbsDimension x="350" y="26"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="20" y="-90"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        this:SetText(XYT_Blacklist.announcementText or "★黑名单警报★ {player} 已加入队伍，请注意！")
+                    </OnLoad>
+                    <OnEnterPressed>
+                        XYT_Blacklist_SetAnnouncementText(this:GetText())
+                        this:ClearFocus()
+                    </OnEnterPressed>
+                    <OnEscapePressed>
+                        this:ClearFocus()
+                    </OnEscapePressed>
+                </Scripts>
+            </EditBox>
+            
+            <!-- 播报文字标签 -->
+            <FontString name="$parentAnnouncementLabel" inherits="GameFontNormalSmall" text="黑名单播报文字：">
+                <Anchors>
+                    <Anchor point="BOTTOMLEFT" relativeTo="$parentAnnouncementText" relativePoint="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="5"/>
+                        </Offset>
+                    </Anchor>   
+                </Anchors>
+            </FontString>
+            
+
+            
+            <!-- 添加玩家到黑名单输入框 -->
+            <EditBox name="$parentAddPlayerText" inherits="InputBoxTemplate" autoFocus="false">
+                <Size>
+                    <AbsDimension x="110" y="26"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="20" y="-130"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        this:SetText("请输入玩家名称")
+                    </OnLoad>
+                    <OnEnterPressed>
+                        local playerName = this:GetText()
+                        local reasonText = XyTrackerBlacklistConfigFrameReasonText:GetText()
+                        if playerName then
+                            if playerName ~= "" then
+                                if playerName ~= "请输入玩家名称" then
+                                    local reason = reasonText
+                                    if reason == "" then
+                                        reason = "手动添加"
+                                    end
+                                    if reason == "请输入原因" then
+                                        reason = "手动添加"
+                                    end
+                                    XYT_Blacklist_AddPlayer(playerName, reason, UnitName("player"))
+                                    this:SetText("请输入玩家名称")
+                                    XyTrackerBlacklistConfigFrameReasonText:SetText("请输入原因")
+                                end
+                            end
+                        end
+                        this:ClearFocus()
+                    </OnEnterPressed>
+                    <OnEscapePressed>
+                        this:ClearFocus()
+                    </OnEscapePressed>
+                </Scripts>
+            </EditBox>
+            
+            <!-- 添加玩家标签 -->
+            <FontString name="$parentAddPlayerLabel" inherits="GameFontNormalSmall" text="添加玩家到黑名单：">
+                <Anchors>
+                    <Anchor point="BOTTOMLEFT" relativeTo="$parentAddPlayerText" relativePoint="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="5"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </FontString>
+            
+            <!-- 添加按钮 -->
+            <Button name="$parentAddButton" inherits="UIPanelButtonTemplate" text="添加">
+                <Size>
+                    <AbsDimension x="80" y="24"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="LEFT" relativeTo="$parentAddPlayerText" relativePoint="RIGHT">
+                        <Offset>
+                            <AbsDimension x="10" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        local playerName = XyTrackerBlacklistConfigFrameAddPlayerText:GetText()
+                        local reasonText = XyTrackerBlacklistConfigFrameReasonText:GetText()
+                        if playerName and playerName ~= "" and playerName ~= "请输入玩家名称" then
+                            local reason = reasonText
+                            if reason == "" or reason == "请输入原因" then
+                                reason = "手动添加"
+                            end
+                            XYT_Blacklist_AddPlayer(playerName, reason, UnitName("player"))
+                            XyTrackerBlacklistConfigFrameAddPlayerText:SetText("请输入玩家名称")
+                            XyTrackerBlacklistConfigFrameReasonText:SetText("请输入原因")
+                        end
+                    </OnClick>
+                </Scripts>
+            </Button>
+            
+            <!-- 删除序号输入框 -->
+            <EditBox name="$parentRemoveIndexEdit" inherits="InputBoxTemplate" autoFocus="false">
+                <Size>
+                    <AbsDimension x="60" y="24"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="LEFT" relativeTo="$parentAddButton" relativePoint="RIGHT">
+                        <Offset>
+                            <AbsDimension x="10" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        this:SetText("序号")
+                    </OnLoad>
+                    <OnEnterPressed>
+                        local index = this:GetText()
+                        if index and index ~= "" and index ~= "序号" then
+                            XYT_Blacklist_RemovePlayerByIndex(index)
+                            this:SetText("序号")
+                        end
+                        this:ClearFocus()
+                    </OnEnterPressed>
+                    <OnEscapePressed>
+                        this:SetText("序号")
+                        this:ClearFocus()
+                        -- 确保ESC键能正确退出输入模式
+                    </OnEscapePressed>
+                </Scripts>
+            </EditBox>
+            
+            <!-- 删除按钮 -->
+            <Button name="$parentRemoveButton" inherits="UIPanelButtonTemplate" text="删除">
+                <Size>
+                    <AbsDimension x="80" y="24"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="LEFT" relativeTo="$parentRemoveIndexEdit" relativePoint="RIGHT">
+                        <Offset>
+                            <AbsDimension x="5" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        local editBox = getglobal(this:GetParent():GetName() .. "RemoveIndexEdit")
+                        local index = editBox:GetText()
+                        if index and index ~= "" and index ~= "序号" then
+                            XYT_Blacklist_RemovePlayerByIndex(index)
+                            editBox:SetText("序号")
+                            editBox:ClearFocus()
+                            -- 移除对Button的SetFocus调用
+                        end
+                    </OnClick>
+                </Scripts>
+            </Button>
+            
+            <!-- 原因输入框 -->
+            <EditBox name="$parentReasonText" inherits="InputBoxTemplate" autoFocus="false">
+                <Size>
+                    <AbsDimension x="350" y="26"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="$parentAddPlayerText" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-10"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        this:SetText("请输入原因")
+                    </OnLoad>
+                    <OnEnterPressed>
+                        local playerName = XyTrackerBlacklistConfigFrameAddPlayerText:GetText()
+                        local reasonText = this:GetText()
+                        if playerName and playerName ~= "" and playerName ~= "请输入玩家名称" then
+                            local reason = reasonText
+                            if reason == "" or reason == "请输入原因" then
+                                reason = "手动添加"
+                            end
+                            XYT_Blacklist_AddPlayer(playerName, reason, UnitName("player"))
+                            XyTrackerBlacklistConfigFrameAddPlayerText:SetText("请输入玩家名称")
+                            this:SetText("请输入原因")
+                        end
+                        this:ClearFocus()
+                    </OnEnterPressed>
+                    <OnEscapePressed>
+                        this:ClearFocus()
+                    </OnEscapePressed>
+                </Scripts>
+            </EditBox>
+            
+            <!-- 原因标签 -->
+            <FontString name="$parentReasonLabel" inherits="GameFontNormalSmall" text="原因：">
+                <Anchors>
+                    <Anchor point="BOTTOMLEFT" relativeTo="$parentReasonText" relativePoint="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="5"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </FontString>
+            
+            <!-- 显示黑名单列表按钮 -->
+            <Button name="$parentShowListButton" inherits="UIPanelButtonTemplate" text="显示黑名单">
+                <Size>
+                    <AbsDimension x="100" y="24"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="20" y="20"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        XYT_Blacklist_ShowList()
+                    </OnClick>
+                </Scripts>
+            </Button>
+            
+            <!-- 关闭按钮 -->
+            <Button name="$parentCloseButton" inherits="UIPanelButtonTemplate" text="关闭">
+                <Size>
+                    <AbsDimension x="80" y="24"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="BOTTOMRIGHT">
+                        <Offset>
+                            <AbsDimension x="-20" y="20"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        this:GetParent():Hide()
+                    </OnClick>
+                </Scripts>
+            </Button>
+            
+            <!-- 帮助文本 -->
+            <FontString name="$parentHelpText" inherits="GameFontNormalSmall" text="提示：输入序号后点击删除按钮可移除对应玩家">
+                <Anchors>
+                    <Anchor point="BOTTOMLEFT" relativeTo="$parentShowListButton" relativePoint="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="5"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </FontString>
+        </Frames>
+        <Scripts>
+            <OnLoad>
+                -- 初始化界面状态
+                if XYT_Blacklist and XYT_Blacklist.enabled then
+                    getglobal(this:GetName() .. "EnableCheckbox"):SetChecked(true)
+                else
+                    getglobal(this:GetName() .. "EnableCheckbox"):SetChecked(false)
+                end
+            </OnLoad>
+            <OnMouseDown>
+                if arg1 == "LeftButton" then
+                    this:StartMoving();
+                end
+            </OnMouseDown>
+            <OnMouseUp>
+                this:StopMovingOrSizing();
+            </OnMouseUp>
+            <OnHide>
+                this:StopMovingOrSizing();
+            </OnHide>
+  
+            <OnShow>
+                -- 更新界面状态
+                if XYT_Blacklist and XYT_Blacklist.enabled then
+                    getglobal(this:GetName() .. "EnableCheckbox"):SetChecked(true)
+                else
+                    getglobal(this:GetName() .. "EnableCheckbox"):SetChecked(false)
+                end
+                
+                if XYT_Blacklist and XYT_Blacklist.announcementText then
+                    getglobal(this:GetName() .. "AnnouncementText"):SetText(XYT_Blacklist.announcementText)
+                end
+            </OnShow>
+        </Scripts>
+    </Frame>
+    
+    <!-- 打开黑名单配置界面的函数 -->
+    <Script>
+        function XYT_Blacklist_ShowConfig()
+            if XyTrackerBlacklistConfigFrame then
+                XyTrackerBlacklistConfigFrame:Show()
+            end
+        end
+    </Script>
+</Ui>
