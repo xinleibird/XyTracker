@@ -5962,24 +5962,13 @@ end
 if GameTooltip then
     Xytooltip2 = CreateFrame("Frame", "Xytooltip2", GameTooltip)
     Xytooltip2:SetScript("OnShow", function()
-        -- [XYDBG] 调试起点：打印原始 tooltip 内容（临时诊断用）
-        local dbgRaw = ""
-        for _i = 1, GameTooltip:NumLines() do
-            local _ln = getglobal("GameTooltipTextLeft".._i):GetText() or ""
-            dbgRaw = dbgRaw .. string.format("|L%d=%s| ", _i, tostring(_ln))
-        end
-        DEFAULT_CHAT_FRAME:AddMessage("[XYDBG] OnShow raw=" .. dbgRaw)
-        -- [/XYDBG]
-
         -- 检查是否已经处理过，避免重复添加
         if GameTooltip.XYProcessed then
-            DEFAULT_CHAT_FRAME:AddMessage("[XYDBG] early-return: XYProcessed already true")
             return
         end
 
         local text = getglobal("GameTooltipTextLeft1"):GetText() or ""
-        DEFAULT_CHAT_FRAME:AddMessage("[XYDBG] text=" .. tostring(text) .. " XYLIST1match=" .. tostring(XYLIST1(text) ~= nil))
-        
+
         -- 添加辅助函数：清理字符串中的颜色代码
         local function stripColorCodes(str)
             if not str then return "" end
@@ -5992,24 +5981,24 @@ if GameTooltip then
             str = string.gsub(str, "|h", "")
             return str
         end
-        
+
         -- 添加辅助函数：提取纯玩家名称，过滤掉军衔信息、换行和称号
         local function extractPlayerName(str)
             if not str then return "" end
-            
+
             -- 首先移除颜色代码
             local cleanStr = stripColorCodes(str)
-            
+
             -- 移除换行符
             cleanStr = string.gsub(cleanStr, "\n", " ")
-            
+
             -- 过滤掉军衔信息，格式如[中士]、[军士长]等
             -- 匹配[...]格式的内容并移除
             cleanStr = string.gsub(cleanStr, "%[.-%]", "")
-            
+
             -- 移除前后空白字符
             cleanStr = string.gsub(cleanStr, "^%s*(.-)%s*$", "%1")
-            
+
             -- 处理"军衔 名字 称号"或"军衔 名字"格式，提取中间的名字部分
             local parts = {}
             -- 避免使用string.gmatch，使用string.gsub和string.match来分割字符串
@@ -6026,7 +6015,7 @@ if GameTooltip then
                     tempStr = nil
                 end
             end
-            
+
             -- 如果有多个部分，取中间的部分作为名字
             -- 如果只有一个部分，直接返回
 
@@ -6038,17 +6027,22 @@ if GameTooltip then
                 -- 对于"军衔 名字"格式，返回第二个部分
                 return parts[2]
             end
-            
+
             return cleanStr
         end
-        
+
         -- 首先尝试作为物品名查询许愿信息
         local namelist = XYLIST1(text)
-        
+
         -- 如果没有找到物品的许愿信息，尝试作为玩家名查询
         if not namelist then
-            -- 使用extractPlayerName函数提取纯玩家名称
-            local playerName = extractPlayerName(text)
+            -- 收集 GameTooltip 全部行的去颜色码文本，用于在 L1 被称号/军衔污染时反向匹配 XyArray 中真实玩家名
+            local fullText = stripColorCodes(text)
+            for i = 2, GameTooltip:NumLines() do
+                local lineText = getglobal("GameTooltipTextLeft"..i):GetText() or ""
+                fullText = fullText .. " " .. stripColorCodes(lineText)
+            end
+
             -- 检查是否是玩家（通常会有职业、等级等信息）
             local isPlayer = false
             for i = 2, GameTooltip:NumLines() do
@@ -6063,26 +6057,33 @@ if GameTooltip then
                     break
                 end
             end
-            DEFAULT_CHAT_FRAME:AddMessage("[XYDBG] isPlayer=" .. tostring(isPlayer) .. " rawPlayerName=" .. tostring(playerName))
             -- 如果是玩家，查询并显示许愿信息
             if isPlayer then
-                -- 提取纯玩家名称，去除颜色代码和军衔信息
-                local cleanPlayerName = extractPlayerName(playerName)
-                DEFAULT_CHAT_FRAME:AddMessage("[XYDBG] cleanPlayerName=" .. tostring(cleanPlayerName))
-                namelist = XYLISTbyPlayer(cleanPlayerName)
-                DEFAULT_CHAT_FRAME:AddMessage("[XYDBG] namelist=" .. tostring(namelist))
+                -- 反向匹配：直接从 XyArray 里找一个真实 player name 出现在 tooltip 文本中。
+                -- 这样不论 L1 是 "名字"、"名字 称号"、"名字 [军衔]" 还是 "名字 称号 [军衔]" 都能命中。
+                if XyArray and type(XyArray) == "table" then
+                    for i = 1, table.getn(XyArray) do
+                        local candidate = XyArray[i] and XyArray[i]["name"]
+                        if candidate and candidate ~= "" and string.find(fullText, candidate, 1, true) then
+                            namelist = XYLISTbyPlayer(candidate)
+                            if namelist then break end
+                        end
+                    end
+                end
+                -- 兜底：保留旧的 extractPlayerName 路径，处理极端未在 XyArray 中的单位
+                if not namelist then
+                    local cleanPlayerName = extractPlayerName(text)
+                    namelist = XYLISTbyPlayer(cleanPlayerName)
+                end
             end
         end
 
         if namelist then
             GameTooltip:AddLine(namelist)
             GameTooltip:Show()
-            DEFAULT_CHAT_FRAME:AddMessage("[XYDBG] ATTACHED line=" .. tostring(namelist))
-        else
-            DEFAULT_CHAT_FRAME:AddMessage("[XYDBG] NO-LINE attached (namelist is nil)")
         end
-        
-        -- 设置处理标记，避免重复处理
+
+        -- 设置处理标记,避免重复处理
         GameTooltip.XYProcessed = true
     end)
 
@@ -6250,10 +6251,6 @@ function ClasstoColor(class)
   end
   
   function XYLISTbyPlayer(playername)
-    DEFAULT_CHAT_FRAME:AddMessage("[XYDBG] XYLISTbyPlayer(" .. tostring(playername) .. ") n=" .. table.getn(XyArray))
-    for _k = 1, table.getn(XyArray) do
-        DEFAULT_CHAT_FRAME:AddMessage(string.format("[XYDBG]   XyArray[%d].name=|%s| xy=|%s|", _k, tostring(XyArray[_k]["name"]), tostring(XyArray[_k]["xy"])))
-    end
     local n = table.getn(XyArray)
     for i = 1, n do
         local name = XyArray[i]["name"]
