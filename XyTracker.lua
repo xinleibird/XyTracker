@@ -5941,6 +5941,7 @@ end
 if AtlasLootTooltip then
     Xytooltip = CreateFrame("Frame", "Xytooltip", AtlasLootTooltip)
     Xytooltip:SetScript("OnShow", function()
+        if not IsInRaid() and not IsInGroup() then return end
         local Itemname = getglobal("AtlasLootTooltipTextLeft1"):GetText()
         local namelist
         if Itemname then 
@@ -5962,6 +5963,7 @@ end
 if GameTooltip then
     Xytooltip2 = CreateFrame("Frame", "Xytooltip2", GameTooltip)
     Xytooltip2:SetScript("OnShow", function()
+        if not IsInRaid() and not IsInGroup() then return end
         -- 检查是否已经处理过，避免重复添加
         if GameTooltip.XYProcessed then
             return
@@ -6096,6 +6098,7 @@ end
 if ItemRefTooltip then
     Xytooltip3 = CreateFrame("Frame", "Xytooltip3", ItemRefTooltip)
     Xytooltip3:SetScript("OnShow", function()
+        if not IsInRaid() and not IsInGroup() then return end
         local Itemname = getglobal("ItemRefTooltipTextLeft1"):GetText()
         local namelist
         if Itemname then 
