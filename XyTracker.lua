@@ -2111,6 +2111,8 @@ function XyTracker_CreateMinimapButton()
             -- 实际渲染尺寸 = 自然尺寸 × MBC 归一化缩放（随收纳条档位 24/28/32px 变化）
             local collectedSize = math.floor(button:GetWidth() * button:GetScale() + 0.5)
             GameTooltip:AddLine("已被收纳插件管理，尺寸跟随收纳条档位（当前 " .. collectedSize .. "px）", 0.6, 0.6, 0.6)
+        else
+            GameTooltip:AddLine("右键点击：放大/缩小图标", 1, 1, 1)
         end
         GameTooltip:Show()
     end)
@@ -2242,13 +2244,58 @@ function XyTracker_CreateMinimapButton()
         end
     end)
     
+    -- 应用图标尺寸：isLarge 为 true 放大到 44px，false 恢复 32px 默认尺寸
+    local function ApplyIconSize(isLarge)
+        local btnSize = isLarge and 44 or 32
+        local texSize = isLarge and 27 or 20
+        button:SetWidth(btnSize)
+        button:SetHeight(btnSize)
+        local normalTex = button.icon
+        if normalTex then
+            normalTex:SetWidth(texSize)
+            normalTex:SetHeight(texSize)
+        end
+        local highlightTex = button:GetHighlightTexture()
+        if highlightTex then
+            highlightTex:SetWidth(btnSize)
+            highlightTex:SetHeight(btnSize)
+        end
+        -- 边框圆环随尺寸档缩放（32→53，44→73）
+        if button.border then
+            button.border:SetWidth(isLarge and 73 or 53)
+            button.border:SetHeight(isLarge and 73 or 53)
+        end
+        -- 保存图标大小状态
+        XyTrackerOptions.iconSize = btnSize
+    end
+
     -- 修改点击事件
     button:SetScript("OnClick", function()
         -- 检查是否是拖动操作而不是纯点击
     
         if not button.isDragging then
+            -- 右键点击：放大缩小图标
+            if arg1 == "RightButton" then
+                -- 被 MinimapButtonCollector 收纳时关闭放大缩小，尺寸由收纳条按档位归一化（24/28/32px）
+                -- 注意：收纳后不能改按钮自然尺寸（会让 MBC 的归一化计算失准），贴图补偿由定时检查处理
+                if XyTracker_IsMinimapButtonCollected() then
+                    -- 实际渲染尺寸 = 自然尺寸 × MBC 归一化缩放
+                    local collectedSize = math.floor(button:GetWidth() * button:GetScale() + 0.5)
+                    DEFAULT_CHAT_FRAME:AddMessage("[XyTracker] 图标已被 MinimapButtonCollector 收纳，放大缩小不可用，尺寸跟随收纳条档位（当前 " .. collectedSize .. "px）")
+                else
+                    -- 切换按钮尺寸
+                    -- 使用math.floor解决浮点数精度问题
+                    local currentWidth = math.floor(button:GetWidth())
+                    if currentWidth == 32 then
+                        -- 放大
+                        ApplyIconSize(true)
+                    else
+                        -- 缩小回原始尺寸
+                        ApplyIconSize(false)
+                    end
+                end
             -- 左键点击：显示/隐藏窗口
-            if arg1 == "LeftButton" then
+            elseif arg1 == "LeftButton" then
                 if XyTrackerFrame:IsShown() then
                     XyTracker_HideXyWindow()
                 else
@@ -2256,26 +2303,26 @@ function XyTracker_CreateMinimapButton()
                 end
             end
         else
-            -- 拖动操作后的尺寸保持（硬编码大档 44px）
+            -- 拖动操作后的尺寸保持
             -- 使用math.floor解决浮点数精度问题
             local currentWidth = math.floor(button:GetWidth())
             if currentWidth ~= 32 and currentWidth ~= 44 then
-                button:SetWidth(44)
-                button:SetHeight(44)
+                button:SetWidth(32)
+                button:SetHeight(32)
                 local normalTex = button.icon
                 if normalTex then
-                    normalTex:SetWidth(27)
-                    normalTex:SetHeight(27)
+                    normalTex:SetWidth(20)
+                    normalTex:SetHeight(20)
                 end
-                -- 边框圆环恢复 44 档尺寸
+                -- 边框圆环恢复 32 档尺寸
                 if button.border then
-                    button.border:SetWidth(73)
-                    button.border:SetHeight(73)
+                    button.border:SetWidth(53)
+                    button.border:SetHeight(53)
                 end
                 local highlightTex = button:GetHighlightTexture()
                 if highlightTex then
-                    highlightTex:SetWidth(44)
-                    highlightTex:SetHeight(44)
+                    highlightTex:SetWidth(32)
+                    highlightTex:SetHeight(32)
                 end
             end
         end
@@ -2287,23 +2334,27 @@ function XyTracker_CreateMinimapButton()
         XyTrackerOptions = {}
     end
     
-    -- 图标尺寸固定为大档 44px（移除右键放大/缩小交互后不再切换）
-    button:SetWidth(44)
-    button:SetHeight(44)
-    local normalTex = button.icon
-    if normalTex then
-        normalTex:SetWidth(27)
-        normalTex:SetHeight(27)
-    end
-    -- 边框圆环大档尺寸
-    if button.border then
-        button.border:SetWidth(73)
-        button.border:SetHeight(73)
-    end
-    local highlightTex = button:GetHighlightTexture()
-    if highlightTex then
-        highlightTex:SetWidth(44)
-        highlightTex:SetHeight(44)
+    -- 加载保存的图标大小（小档现为 32，旧存档的 26/36 统一归并到 32；44 档不变）
+    if XyTrackerOptions.iconSize then
+        local size = XyTrackerOptions.iconSize == 44 and 44 or 32
+        XyTrackerOptions.iconSize = size
+        button:SetWidth(size)
+        button:SetHeight(size)
+        local normalTex = button.icon
+        if normalTex then
+            normalTex:SetWidth(size == 32 and 20 or 27)
+            normalTex:SetHeight(size == 32 and 20 or 27)
+        end
+        -- 边框圆环随尺寸档缩放
+        if button.border then
+            button.border:SetWidth(size == 32 and 53 or 73)
+            button.border:SetHeight(size == 32 and 53 or 73)
+        end
+        local highlightTex = button:GetHighlightTexture()
+        if highlightTex then
+            highlightTex:SetWidth(size)
+            highlightTex:SetHeight(size)
+        end
     end
     -- 根据最后一次拖动类型加载对应的位置
     -- 添加额外的验证确保数据有效
@@ -2336,9 +2387,10 @@ function XyTracker_CreateMinimapButton()
         if not lastCheckTime or currentTime - lastCheckTime > 5 then
             lastCheckTime = currentTime
             local normalTex = button.icon
-            if normalTex and math.floor(normalTex:GetWidth()) ~= 27 then
-                normalTex:SetWidth(27)
-                normalTex:SetHeight(27)
+            local wantTex = (XyTrackerOptions.iconSize == 44) and 27 or 20
+            if normalTex and math.floor(normalTex:GetWidth()) ~= wantTex then
+                normalTex:SetWidth(wantTex)
+                normalTex:SetHeight(wantTex)
             end
             if XyTrackerMinimapButton and not XyTrackerMinimapButton:IsVisible() then
                 XyTrackerMinimapButton:Show()
